@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+<meta charset="UTF-8">
+<title>Apļu skaitīšana</title>
+<style>
+body { font-family: Arial; padding: 20px; }
+button { font-size: 18px; margin: 5px; padding: 10px; }
+table { margin-top: 20px; border-collapse: collapse; width: 100%; }
+td, th { border: 1px solid #ccc; padding: 8px; text-align: center; }
+</style>
+</head>
+<body>
+
+<h2>🏃 Apļu skaitīšanas sistēma</h2>
+
+<button onclick="startVoice()">🎤 Sākt runāt</button>
+<button onclick="addManual()">➕ Manuāli</button>
+<button onclick="undo()">↩️ Undo</button>
+
+<p id="status">Gatavs</p>
+
+<input id="manualInput" placeholder="Numurs" style="font-size:18px; padding:5px;">
+<button onclick="addLap(document.getElementById('manualInput').value)">Pievienot</button>
+
+<table>
+<thead>
+<tr><th>Numurs</th><th>Apļi</th></tr>
+</thead>
+<tbody id="table"></tbody>
+</table>
+
+<script>
+let data = JSON.parse(localStorage.getItem("laps") || "{}");
+let history = [];
+
+function save() {
+  localStorage.setItem("laps", JSON.stringify(data));
+}
+
+function render() {
+  let table = document.getElementById("table");
+  table.innerHTML = "";
+  for (let num in data) {
+    table.innerHTML += `<tr><td>${num}</td><td>${data[num]}</td></tr>`;
+  }
+}
+
+function addLap(num) {
+  if (!num) return;
+  num = num.replace(/\D/g,"");
+  if (!num) return;
+
+  history.push(JSON.stringify(data));
+
+  if (!data[num]) data[num] = 0;
+  data[num]++;
+
+  save();
+  render();
+
+  document.getElementById("status").innerText = "Pievienots: " + num;
+}
+
+function undo() {
+  if (history.length === 0) return;
+  data = JSON.parse(history.pop());
+  save();
+  render();
+}
+
+function startVoice() {
+  let rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  rec.lang = "en-US";
+  rec.start();
+
+  document.getElementById("status").innerText = "Klausos...";
+
+  rec.onresult = function(e) {
+    let text = e.results[0][0].transcript;
+    addLap(text);
+    startVoice();
+  };
+}
+
+function addManual() {
+  let val = prompt("Numurs:");
+  addLap(val);
+}
+
+render();
+</script>
+
+</body>
+</html>

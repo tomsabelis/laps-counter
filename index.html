@@ -1,27 +1,29 @@
 <!DOCTYPE html>
-<html>
+<html lang="lv">
 <head>
 <meta charset="UTF-8">
-<title>Race System PRO</title>
+<title>Race Voice PRO</title>
 <style>
 body { font-family: Arial; padding: 15px; }
-button { padding: 8px 12px; margin: 5px; }
+button { padding: 10px 14px; margin: 5px; font-size: 16px; }
 table { border-collapse: collapse; width: 100%; margin-top: 15px; }
-td, th { border: 1px solid #ccc; padding: 5px; text-align: center; }
+td, th { border: 1px solid #ccc; padding: 6px; text-align: center; }
 input { width: 90%; }
 </style>
 </head>
 <body>
 
-<h2>🏃 Race System PRO (1–150)</h2>
+<h2>🏃 Race Voice PRO (1–150)</h2>
 
-<button onclick="newProject()">🆕 Jauns projekts</button>
-<button onclick="finishProject()">🏁 Pabeigt / Eksportēt</button>
+<!-- IERAKSTĪT SKAŅU (jaunais variants) -->
+<button onclick="startVoice()">🎤 Ierakstīt skaņu</button>
+
+<button onclick="finishProject()">📥 Eksportēt</button>
 
 <br><br>
 
-<input id="inputNum" placeholder="Numurs (balss vai manuāli)">
-<button onclick="addLap()">➕ Aplis</button>
+<input id="manual" placeholder="Numurs (manuāli)">
+<button onclick="addLap(document.getElementById('manual').value)">➕ Aplis</button>
 
 <p id="status">Gatavs</p>
 
@@ -31,7 +33,7 @@ input { width: 90%; }
 <th>Nr</th>
 <th>Vārds</th>
 <th>Uzvārds</th>
-<th>Dzim. gads</th>
+<th>Dz. gads</th>
 <th>Apļi</th>
 </tr>
 </thead>
@@ -42,20 +44,14 @@ input { width: 90%; }
 
 let data = {};
 
-function newProject() {
-  data = {};
-
-  for (let i = 1; i <= 150; i++) {
-    data[i] = {
-      name: "",
-      surname: "",
-      year: "",
-      laps: 0
-    };
-  }
-
-  render();
-  document.getElementById("status").innerText = "Jauns projekts izveidots (1–150)";
+// INIT 1–150
+for (let i = 1; i <= 150; i++) {
+  data[i] = {
+    name: "",
+    surname: "",
+    year: "",
+    laps: 0
+  };
 }
 
 function render() {
@@ -80,9 +76,11 @@ function render() {
   }
 }
 
-function addLap() {
-  let num = document.getElementById("inputNum").value;
-  num = num.replace(/\D/g,"");
+// PIEVIENO APLI
+function addLap(num) {
+  if (!num) return;
+
+  num = num.toString().replace(/\D/g,"");
 
   if (!data[num]) {
     document.getElementById("status").innerText = "Nav atrasts: " + num;
@@ -90,37 +88,47 @@ function addLap() {
   }
 
   data[num].laps++;
-  render();
 
-  document.getElementById("status").innerText = "Aplis pievienots: " + num;
+  document.getElementById("status").innerText = "Aplis: " + num;
+
+  render();
 }
 
-// BALSS (LV vai EN)
+// 🎤 NEPĀRTRAUKTA BALSS SISTĒMA
 function startVoice() {
   let rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-  rec.lang = "lv-LV";
 
-  rec.start();
+  rec.lang = "lv-LV";
+  rec.continuous = false;
+  rec.interimResults = false;
+
   document.getElementById("status").innerText = "Klausos...";
 
+  rec.start();
+
   rec.onresult = function(e) {
-    let text = e.results[0][0].transcript;
+    let text = e.results[0][0].transcript.toLowerCase();
+
+    // izņem tikai ciparus
     let num = text.replace(/\D/g,"");
 
-    document.getElementById("inputNum").value = num;
-    addLap();
+    addLap(num);
 
-    startVoice();
+    // restart (NEPĀRTRAUKTI klausās)
+    setTimeout(startVoice, 300);
+  };
+
+  rec.onerror = function() {
+    setTimeout(startVoice, 1000);
   };
 }
 
-// EXPORT CSV
+// 📥 EXPORT CSV
 function finishProject() {
   let csv = "Nr,Vards,Uzvards,DzGads,Apli\n";
 
   for (let i = 1; i <= 150; i++) {
     let r = data[i];
-
     csv += `${i},${r.name},${r.surname},${r.year},${r.laps}\n`;
   }
 
@@ -133,7 +141,7 @@ function finishProject() {
   a.click();
 }
 
-newProject();
+render();
 
 </script>
 

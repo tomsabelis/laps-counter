@@ -2,29 +2,36 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Laps Counter PRO</title>
+<title>Race System PRO</title>
 <style>
-body { font-family: Arial; padding: 20px; }
-button { padding: 10px; margin: 5px; font-size: 16px; }
-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-td, th { border: 1px solid #ccc; padding: 6px; text-align: center; }
+body { font-family: Arial; padding: 15px; }
+button { padding: 8px 12px; margin: 5px; }
+table { border-collapse: collapse; width: 100%; margin-top: 15px; }
+td, th { border: 1px solid #ccc; padding: 5px; text-align: center; }
+input { width: 90%; }
 </style>
 </head>
 <body>
 
-<h2>🏃 Laps Counter PRO</h2>
+<h2>🏃 Race System PRO (1–150)</h2>
 
-<button onclick="startVoice()">🎤 Runāt</button>
-<button onclick="exportCSV()">📥 Eksportēt</button>
+<button onclick="newProject()">🆕 Jauns projekts</button>
+<button onclick="finishProject()">🏁 Pabeigt / Eksportēt</button>
+
+<br><br>
+
+<input id="inputNum" placeholder="Numurs (balss vai manuāli)">
+<button onclick="addLap()">➕ Aplis</button>
 
 <p id="status">Gatavs</p>
 
 <table>
 <thead>
 <tr>
-<th>Numurs</th>
+<th>Nr</th>
 <th>Vārds</th>
 <th>Uzvārds</th>
+<th>Dzim. gads</th>
 <th>Apļi</th>
 </tr>
 </thead>
@@ -33,76 +40,91 @@ td, th { border: 1px solid #ccc; padding: 6px; text-align: center; }
 
 <script>
 
-// DALĪBNIEKI (šeit ieliec visus līdz 150)
-let runners = {
-  1: ["Jānis", "Bērziņš", 0],
-  2: ["Anna", "Kalniņa", 0],
-  23: ["Pēteris", "Ozols", 0]
-};
+let data = {};
 
-let history = [];
+function newProject() {
+  data = {};
+
+  for (let i = 1; i <= 150; i++) {
+    data[i] = {
+      name: "",
+      surname: "",
+      year: "",
+      laps: 0
+    };
+  }
+
+  render();
+  document.getElementById("status").innerText = "Jauns projekts izveidots (1–150)";
+}
 
 function render() {
   let t = document.getElementById("table");
   t.innerHTML = "";
 
-  for (let num in runners) {
-    let r = runners[num];
-    t.innerHTML += `<tr>
-      <td>${num}</td>
-      <td>${r[0]}</td>
-      <td>${r[1]}</td>
-      <td>${r[2]}</td>
+  for (let i = 1; i <= 150; i++) {
+    let r = data[i];
+
+    t.innerHTML += `
+    <tr>
+      <td>${i}</td>
+
+      <td><input value="${r.name}" onchange="data[${i}].name=this.value"></td>
+
+      <td><input value="${r.surname}" onchange="data[${i}].surname=this.value"></td>
+
+      <td><input value="${r.year}" onchange="data[${i}].year=this.value"></td>
+
+      <td>${r.laps}</td>
     </tr>`;
   }
 }
 
-function addLap(num) {
-  num = num.toString().replace(/\D/g,"");
+function addLap() {
+  let num = document.getElementById("inputNum").value;
+  num = num.replace(/\D/g,"");
 
-  if (!runners[num]) {
+  if (!data[num]) {
     document.getElementById("status").innerText = "Nav atrasts: " + num;
     return;
   }
 
-  history.push(JSON.stringify(runners));
-
-  runners[num][2]++;
-
+  data[num].laps++;
   render();
-  document.getElementById("status").innerText = "Pievienots: " + num;
+
+  document.getElementById("status").innerText = "Aplis pievienots: " + num;
 }
 
-// BALSS
+// BALSS (LV vai EN)
 function startVoice() {
   let rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  rec.lang = "lv-LV";
 
-  rec.lang = "lv-LV"; // latviešu
   rec.start();
-
   document.getElementById("status").innerText = "Klausos...";
 
   rec.onresult = function(e) {
-    let text = e.results[0][0].transcript.toLowerCase();
+    let text = e.results[0][0].transcript;
+    let num = text.replace(/\D/g,"");
 
-    let num = text.replace(/\D/g,""); // paņem ciparus
-
-    addLap(num);
+    document.getElementById("inputNum").value = num;
+    addLap();
 
     startVoice();
   };
 }
 
-// EXPORT
-function exportCSV() {
-  let csv = "Numurs,Vards,Uzvards,Apli\n";
+// EXPORT CSV
+function finishProject() {
+  let csv = "Nr,Vards,Uzvards,DzGads,Apli\n";
 
-  for (let num in runners) {
-    let r = runners[num];
-    csv += `${num},${r[0]},${r[1]},${r[2]}\n`;
+  for (let i = 1; i <= 150; i++) {
+    let r = data[i];
+
+    csv += `${i},${r.name},${r.surname},${r.year},${r.laps}\n`;
   }
 
-  let blob = new Blob([csv], { type: "text/csv" });
+  let blob = new Blob([csv], {type: "text/csv"});
   let url = URL.createObjectURL(blob);
 
   let a = document.createElement("a");
@@ -111,7 +133,7 @@ function exportCSV() {
   a.click();
 }
 
-render();
+newProject();
 
 </script>
 

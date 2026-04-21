@@ -1,94 +1,118 @@
 <!DOCTYPE html>
-<html lang="lv">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Apļu skaitīšana</title>
+<title>Laps Counter PRO</title>
 <style>
 body { font-family: Arial; padding: 20px; }
-button { font-size: 18px; margin: 5px; padding: 10px; }
-table { margin-top: 20px; border-collapse: collapse; width: 100%; }
-td, th { border: 1px solid #ccc; padding: 8px; text-align: center; }
+button { padding: 10px; margin: 5px; font-size: 16px; }
+table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+td, th { border: 1px solid #ccc; padding: 6px; text-align: center; }
 </style>
 </head>
 <body>
 
-<h2>🏃 Apļu skaitīšanas sistēma</h2>
+<h2>🏃 Laps Counter PRO</h2>
 
-<button onclick="startVoice()">🎤 Sākt runāt</button>
-<button onclick="addManual()">➕ Manuāli</button>
-<button onclick="undo()">↩️ Undo</button>
+<button onclick="startVoice()">🎤 Runāt</button>
+<button onclick="exportCSV()">📥 Eksportēt</button>
 
 <p id="status">Gatavs</p>
 
-<input id="manualInput" placeholder="Numurs" style="font-size:18px; padding:5px;">
-<button onclick="addLap(document.getElementById('manualInput').value)">Pievienot</button>
-
 <table>
 <thead>
-<tr><th>Numurs</th><th>Apļi</th></tr>
+<tr>
+<th>Numurs</th>
+<th>Vārds</th>
+<th>Uzvārds</th>
+<th>Apļi</th>
+</tr>
 </thead>
 <tbody id="table"></tbody>
 </table>
 
 <script>
-let data = JSON.parse(localStorage.getItem("laps") || "{}");
+
+// DALĪBNIEKI (šeit ieliec visus līdz 150)
+let runners = {
+  1: ["Jānis", "Bērziņš", 0],
+  2: ["Anna", "Kalniņa", 0],
+  23: ["Pēteris", "Ozols", 0]
+};
+
 let history = [];
 
-function save() {
-  localStorage.setItem("laps", JSON.stringify(data));
-}
-
 function render() {
-  let table = document.getElementById("table");
-  table.innerHTML = "";
-  for (let num in data) {
-    table.innerHTML += `<tr><td>${num}</td><td>${data[num]}</td></tr>`;
+  let t = document.getElementById("table");
+  t.innerHTML = "";
+
+  for (let num in runners) {
+    let r = runners[num];
+    t.innerHTML += `<tr>
+      <td>${num}</td>
+      <td>${r[0]}</td>
+      <td>${r[1]}</td>
+      <td>${r[2]}</td>
+    </tr>`;
   }
 }
 
 function addLap(num) {
-  if (!num) return;
-  num = num.replace(/\D/g,"");
-  if (!num) return;
+  num = num.toString().replace(/\D/g,"");
 
-  history.push(JSON.stringify(data));
+  if (!runners[num]) {
+    document.getElementById("status").innerText = "Nav atrasts: " + num;
+    return;
+  }
 
-  if (!data[num]) data[num] = 0;
-  data[num]++;
+  history.push(JSON.stringify(runners));
 
-  save();
+  runners[num][2]++;
+
   render();
-
   document.getElementById("status").innerText = "Pievienots: " + num;
 }
 
-function undo() {
-  if (history.length === 0) return;
-  data = JSON.parse(history.pop());
-  save();
-  render();
-}
-
+// BALSS
 function startVoice() {
   let rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-  rec.lang = "en-US";
+
+  rec.lang = "lv-LV"; // latviešu
   rec.start();
 
   document.getElementById("status").innerText = "Klausos...";
 
   rec.onresult = function(e) {
-    let text = e.results[0][0].transcript;
-    addLap(text);
+    let text = e.results[0][0].transcript.toLowerCase();
+
+    let num = text.replace(/\D/g,""); // paņem ciparus
+
+    addLap(num);
+
     startVoice();
   };
 }
 
-function addManual() {
-  let val = prompt("Numurs:");
-  addLap(val);
+// EXPORT
+function exportCSV() {
+  let csv = "Numurs,Vards,Uzvards,Apli\n";
+
+  for (let num in runners) {
+    let r = runners[num];
+    csv += `${num},${r[0]},${r[1]},${r[2]}\n`;
+  }
+
+  let blob = new Blob([csv], { type: "text/csv" });
+  let url = URL.createObjectURL(blob);
+
+  let a = document.createElement("a");
+  a.href = url;
+  a.download = "rezultati.csv";
+  a.click();
 }
 
 render();
+
 </script>
 
 </body>

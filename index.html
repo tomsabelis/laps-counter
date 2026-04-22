@@ -2,28 +2,27 @@
 <html lang="lv">
 <head>
 <meta charset="UTF-8">
-<title>Race Voice PRO</title>
+<title>Race Fast PRO</title>
 <style>
 body { font-family: Arial; padding: 15px; }
 button { padding: 10px 14px; margin: 5px; font-size: 16px; }
 table { border-collapse: collapse; width: 100%; margin-top: 15px; }
 td, th { border: 1px solid #ccc; padding: 6px; text-align: center; }
-input { width: 90%; }
+input { width: 120px; font-size:18px; padding:5px; }
+.highlight { background-color: #c8f7c5; }
 </style>
 </head>
 <body>
 
-<h2>🏃 Race Voice PRO (1–150)</h2>
+<h2>🏃 Race Fast PRO (1–150)</h2>
 
-<!-- IERAKSTĪT SKAŅU (jaunais variants) -->
 <button onclick="startVoice()">🎤 Ierakstīt skaņu</button>
-
 <button onclick="finishProject()">📥 Eksportēt</button>
 
 <br><br>
 
-<input id="manual" placeholder="Numurs (manuāli)">
-<button onclick="addLap(document.getElementById('manual').value)">➕ Aplis</button>
+<input id="manual" placeholder="Nr" autofocus>
+<button onclick="manualAdd()">➕</button>
 
 <p id="status">Gatavs</p>
 
@@ -43,17 +42,14 @@ input { width: 90%; }
 <script>
 
 let data = {};
+let lastRow = null;
 
-// INIT 1–150
+// INIT
 for (let i = 1; i <= 150; i++) {
-  data[i] = {
-    name: "",
-    surname: "",
-    year: "",
-    laps: 0
-  };
+  data[i] = { name:"", surname:"", year:"", laps:0 };
 }
 
+// RENDER (vienreiz)
 function render() {
   let t = document.getElementById("table");
   t.innerHTML = "";
@@ -62,68 +58,92 @@ function render() {
     let r = data[i];
 
     t.innerHTML += `
-    <tr>
+    <tr id="row-${i}">
       <td>${i}</td>
-
       <td><input value="${r.name}" onchange="data[${i}].name=this.value"></td>
-
       <td><input value="${r.surname}" onchange="data[${i}].surname=this.value"></td>
-
       <td><input value="${r.year}" onchange="data[${i}].year=this.value"></td>
-
-      <td>${r.laps}</td>
+      <td id="laps-${i}">0</td>
     </tr>`;
   }
 }
 
-// PIEVIENO APLI
+// 🔊 BEEP
+function beep() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = ctx.createOscillator();
+  osc.connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 0.05);
+}
+
+// ➕ PIEVIENO APLI (ātri)
 function addLap(num) {
   if (!num) return;
 
   num = num.toString().replace(/\D/g,"");
 
   if (!data[num]) {
-    document.getElementById("status").innerText = "Nav atrasts: " + num;
+    document.getElementById("status").innerText = "❌ Nav: " + num;
     return;
   }
 
   data[num].laps++;
 
-  document.getElementById("status").innerText = "Aplis: " + num;
+  // update tikai vienu šūnu (SUPER ātri)
+  document.getElementById("laps-" + num).innerText = data[num].laps;
 
-  render();
+  // highlight
+  if (lastRow) lastRow.classList.remove("highlight");
+  let row = document.getElementById("row-" + num);
+  row.classList.add("highlight");
+  lastRow = row;
+
+  document.getElementById("status").innerText = "✔ " + num;
+
+  beep();
 }
 
-// 🎤 NEPĀRTRAUKTA BALSS SISTĒMA
+// ⌨️ MANUĀLA SUPER ĀTRA
+function manualAdd() {
+  let input = document.getElementById("manual");
+  addLap(input.value);
+
+  input.value = ""; // 🔥 iztīra uzreiz
+  input.focus();    // 🔥 fokus paliek
+}
+
+// ENTER = +1 aplis
+document.getElementById("manual").addEventListener("keydown", function(e){
+  if (e.key === "Enter") {
+    manualAdd();
+  }
+});
+
+// 🎤 BALSS (loop)
 function startVoice() {
   let rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
 
   rec.lang = "lv-LV";
-  rec.continuous = false;
-  rec.interimResults = false;
-
-  document.getElementById("status").innerText = "Klausos...";
-
   rec.start();
+
+  document.getElementById("status").innerText = "🎤 Klausos...";
 
   rec.onresult = function(e) {
     let text = e.results[0][0].transcript.toLowerCase();
-
-    // izņem tikai ciparus
     let num = text.replace(/\D/g,"");
 
     addLap(num);
 
-    // restart (NEPĀRTRAUKTI klausās)
-    setTimeout(startVoice, 300);
+    setTimeout(startVoice, 200);
   };
 
   rec.onerror = function() {
-    setTimeout(startVoice, 1000);
+    setTimeout(startVoice, 800);
   };
 }
 
-// 📥 EXPORT CSV
+// 📥 EXPORT
 function finishProject() {
   let csv = "Nr,Vards,Uzvards,DzGads,Apli\n";
 

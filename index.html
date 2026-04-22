@@ -1,40 +1,40 @@
 <!DOCTYPE html>
 <html lang="lv">
+
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#2e7d32">
 
-<title>Race PRO</title>
+<title>Veselības Apļi</title>
 
 <!-- PWA -->
 <link rel="manifest" href="manifest.json">
 
 <style>
-body { font-family: Arial; padding: 10px; }
-button { padding: 8px 12px; margin: 4px; }
-input { width: 90px; }
-table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-td, th { border: 1px solid #ccc; padding: 4px; text-align: center; }
-.highlight { background: #c8f7c5; }
+body{font-family:Arial;padding:10px}
+button{margin:4px;padding:8px}
+input,select{width:90px}
+table{border-collapse:collapse;width:100%;margin-top:10px}
+td,th{border:1px solid #ccc;padding:4px;text-align:center}
+.highlight{background:#c8f7c5}
 </style>
 </head>
 
 <body>
 
-<h2>🏃 Race PRO (Offline)</h2>
+<h2>🏃 Veselības Apļi</h2>
 
 <h3 id="timer">00:00</h3>
 
 <button onclick="startRace()">▶️ Start</button>
-<button onclick="pauseRace()">⏸</button>
-<button onclick="stopRace()">🛑</button>
+<button onclick="stopRace()">🛑 Stop</button>
 <button onclick="exportCSV()">📥 Eksports</button>
 
 <br><br>
 
 <input id="num" placeholder="Nr" autofocus>
-<button onclick="manualAdd()">➕</button>
+<button onclick="addLap()">➕ Aplis</button>
 
 <p id="status">Gatavs</p>
 
@@ -45,7 +45,7 @@ td, th { border: 1px solid #ccc; padding: 4px; text-align: center; }
 <th>Vārds</th>
 <th>Uzvārds</th>
 <th>Dzimums</th>
-<th>Dz.g.</th>
+<th>Dz.gads</th>
 <th>Kategorija</th>
 <th>Apļi</th>
 <th>Pēdējais laiks</th>
@@ -57,59 +57,39 @@ td, th { border: 1px solid #ccc; padding: 4px; text-align: center; }
 <script>
 
 // ================= TIMER =================
-let startTime = localStorage.getItem("startTime");
-let running = localStorage.getItem("running") === "true";
+let startTime=null;
+let running=false;
 
 function updateTimer(){
   if(!startTime) return;
 
-  let diff = Math.floor((Date.now() - startTime)/1000);
-  let m = String(Math.floor(diff/60)).padStart(2,'0');
-  let s = String(diff%60).padStart(2,'0');
-
-  document.getElementById("timer").innerText = m+":"+s;
+  let d=Math.floor((Date.now()-startTime)/1000);
+  document.getElementById("timer").innerText=
+    String(Math.floor(d/60)).padStart(2,'0')+":"+String(d%60).padStart(2,'0');
 }
 setInterval(updateTimer,1000);
 
-function startRace(){
-  if(!startTime) startTime = Date.now();
-  running = true;
-  save();
-}
-function pauseRace(){ running=false; save(); }
-function stopRace(){ running=false; startTime=null; save(); }
-
 // ================= CATEGORY =================
-function getCategory(year){
-  year = parseInt(year);
-
-  if(year >= 2015) return "U10";
-  if(year >= 2009) return "U16";
-  if(year >= 1983) return "Adults";
-  if(year <= 1980) return "Seniors";
-  return "";
+function getCat(y){
+  y=parseInt(y);
+  if(!y) return "";
+  if(y>=2015) return "U10";
+  if(y>=2009) return "U16";
+  if(y>=1983) return "Adults";
+  return "Seniors";
 }
 
 // ================= DATA =================
-let state = JSON.parse(localStorage.getItem("raceData")) || {};
+let state=JSON.parse(localStorage.getItem("va"))||{};
 
-if(Object.keys(state).length === 0){
+if(Object.keys(state).length===0){
   for(let i=1;i<=150;i++){
-    state[i]={
-      name:"",
-      surname:"",
-      gender:"",
-      year:"",
-      laps:0,
-      times:[]
-    };
+    state[i]={n:"",s:"",g:"",y:"",l:0,t:[]};
   }
 }
 
 function save(){
-  localStorage.setItem("raceData",JSON.stringify(state));
-  localStorage.setItem("startTime",startTime);
-  localStorage.setItem("running",running);
+  localStorage.setItem("va",JSON.stringify(state));
 }
 
 // ================= RENDER =================
@@ -120,76 +100,105 @@ function render(){
   for(let i=1;i<=150;i++){
     let r=state[i];
 
-    let cat=getCategory(r.year);
-    let last=r.times.length ? r.times[r.times.length-1] : "";
-
     t.innerHTML+=`
-    <tr id="row-${i}">
+    <tr>
       <td>${i}</td>
 
-      <td><input value="${r.name}" onchange="state[${i}].name=this.value;save()"></td>
-      <td><input value="${r.surname}" onchange="state[${i}].surname=this.value;save()"></td>
+      <td><input value="${r.n}" oninput="state[${i}].n=this.value;save()"></td>
+      <td><input value="${r.s}" oninput="state[${i}].s=this.value;save()"></td>
 
       <td>
-        <select onchange="state[${i}].gender=this.value;save()">
+        <select onchange="state[${i}].g=this.value;save()">
           <option value="">-</option>
-          <option value="V" ${r.gender=="V"?"selected":""}>V</option>
-          <option value="S" ${r.gender=="S"?"selected":""}>S</option>
+          <option value="V" ${r.g=="V"?"selected":""}>V</option>
+          <option value="S" ${r.g=="S"?"selected":""}>S</option>
         </select>
       </td>
 
-      <td><input value="${r.year}" onchange="state[${i}].year=this.value;save()"></td>
+      <td><input value="${r.y}" oninput="state[${i}].y=this.value;save()"></td>
 
-      <td>${cat}</td>
+      <td>${getCat(r.y)}</td>
 
-      <td id="laps-${i}">${r.laps}</td>
-      <td>${last}</td>
+      <td id="l-${i}">${r.l}</td>
+      <td>${r.t.length?r.t[r.t.length-1]:""}</td>
     </tr>`;
   }
 }
 
-// ================= ADD LAP =================
-function addLap(num){
+// ================= START / STOP =================
+function startRace(){
+  startTime=Date.now();
+  running=true;
+  save();
+}
+
+function stopRace(){
+  running=false;
+  startTime=null;
+  save();
+}
+
+// ================= LAP =================
+function addLap(){
   if(!running) return;
 
-  num=num.replace(/\D/g,"");
-  if(!state[num]) return;
+  let n=document.getElementById("num").value.replace(/\D/g,"");
+  if(!state[n]) return;
 
   let t=((Date.now()-startTime)/1000).toFixed(1);
 
-  state[num].laps++;
-  state[num].times.push(t);
+  state[n].l++;
+  state[n].t.push(t);
 
-  document.getElementById("laps-"+num).innerText=state[num].laps;
+  document.getElementById("l-"+n).innerText=state[n].l;
+
+  document.getElementById("num").value="";
+  document.getElementById("num").focus();
 
   save();
 }
 
-// ================= MANUAL INPUT =================
-function manualAdd(){
-  let i=document.getElementById("num");
-  addLap(i.value);
-  i.value="";
-  i.focus();
-}
-
 document.getElementById("num").addEventListener("keydown",e=>{
-  if(e.key==="Enter") manualAdd();
+  if(e.key==="Enter") addLap();
 });
 
 // ================= EXPORT =================
 function exportCSV(){
-  let csv="Nr,Vards,Uzvards,Dzimums,DzGads,Kategorija,Apli,Laiki\n";
+
+  let arr=[];
 
   for(let i=1;i<=150;i++){
     let r=state[i];
-    csv+=`${i},${r.name},${r.surname},${r.gender},${r.year},${getCategory(r.year)},${r.laps},"${r.times.join('|')}"\n`;
+
+    arr.push({
+      nr:i,
+      n:r.n,
+      s:r.s,
+      g:r.g,
+      y:r.y,
+      c:getCat(r.y),
+      l:r.l,
+      last:r.t.length?r.t[r.t.length-1]:"",
+      t:r.t.join("|")
+    });
   }
+
+  arr.sort((a,b)=>{
+    if(a.c!==b.c) return a.c.localeCompare(b.c);
+    if(a.g!==b.g) return a.g.localeCompare(b.g);
+    return b.l-a.l;
+  });
+
+  let csv="Nr,Vards,Uzvards,Dzimums,DzGads,Kategorija,Apli,Pedejais,Laiki\n";
+
+  arr.forEach(r=>{
+    csv+=`${r.nr},${r.n},${r.s},${r.g},${r.y},${r.c},${r.l},${r.last},"${r.t}"\n`;
+  });
 
   let blob=new Blob([csv],{type:"text/csv"});
   let a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
-  a.download="rezultati.csv";
+  a.download="Veselibas_Apli.csv";
   a.click();
 }
 
@@ -197,12 +206,6 @@ function exportCSV(){
 render();
 updateTimer();
 
-</script>
-
-<script>
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('service-worker.js');
-}
 </script>
 
 </body>

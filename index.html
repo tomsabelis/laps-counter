@@ -2,38 +2,39 @@
 <html lang="lv">
 <head>
 <meta charset="UTF-8">
-<title>Race Fast PRO</title>
+<title>Race Offline PRO</title>
 <style>
-body { font-family: Arial; padding: 15px; }
-button { padding: 10px 14px; margin: 5px; font-size: 16px; }
-table { border-collapse: collapse; width: 100%; margin-top: 15px; }
-td, th { border: 1px solid #ccc; padding: 6px; text-align: center; }
-input { width: 120px; font-size:18px; padding:5px; }
-.highlight { background-color: #c8f7c5; }
+body { font-family: Arial; padding: 10px; }
+button { padding: 8px; margin: 4px; }
+input { width: 100px; }
+table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+td, th { border: 1px solid #ccc; padding: 4px; text-align: center; }
+.highlight { background: #c8f7c5; }
 </style>
 </head>
 <body>
 
-<h2>🏃 Race Fast PRO (1–150)</h2>
+<h2>🏃 Race Offline PRO</h2>
 
-<button onclick="startVoice()">🎤 Ierakstīt skaņu</button>
-<button onclick="finishProject()">📥 Eksportēt</button>
+<h3 id="timer">00:00</h3>
+
+<button onclick="startRace()">▶️ Start</button>
+<button onclick="pauseRace()">⏸ Pauze</button>
+<button onclick="stopRace()">🛑 Beigt</button>
 
 <br><br>
 
-<input id="manual" placeholder="Nr" autofocus>
+<input id="num" placeholder="Nr">
 <button onclick="manualAdd()">➕</button>
+
+<button onclick="exportCSV()">📥 Eksports</button>
 
 <p id="status">Gatavs</p>
 
 <table>
 <thead>
 <tr>
-<th>Nr</th>
-<th>Vārds</th>
-<th>Uzvārds</th>
-<th>Dz. gads</th>
-<th>Apļi</th>
+<th>Nr</th><th>Vārds</th><th>Uzvārds</th><th>Kategorija</th><th>Apļi</th><th>Pēdējais aplis</th>
 </tr>
 </thead>
 <tbody id="table"></tbody>
@@ -41,127 +42,127 @@ input { width: 120px; font-size:18px; padding:5px; }
 
 <script>
 
-let data = {};
-let lastRow = null;
+let state = JSON.parse(localStorage.getItem("raceData")) || {};
+let raceStart = localStorage.getItem("raceStart") || null;
+let running = localStorage.getItem("running") === "true";
 
-// INIT
-for (let i = 1; i <= 150; i++) {
-  data[i] = { name:"", surname:"", year:"", laps:0 };
+if (Object.keys(state).length === 0) {
+  for (let i = 1; i <= 150; i++) {
+    state[i] = {name:"",surname:"",cat:"",laps:0,times:[]};
+  }
 }
 
-// RENDER (vienreiz)
+function save() {
+  localStorage.setItem("raceData", JSON.stringify(state));
+  localStorage.setItem("raceStart", raceStart);
+  localStorage.setItem("running", running);
+}
+
+// TIMER
+function updateTimer() {
+  if (!raceStart) return;
+
+  let now = Date.now();
+  let diff = Math.floor((now - raceStart)/1000);
+
+  let m = String(Math.floor(diff/60)).padStart(2,'0');
+  let s = String(diff%60).padStart(2,'0');
+
+  document.getElementById("timer").innerText = m+":"+s;
+}
+
+setInterval(updateTimer, 1000);
+
+function startRace() {
+  if (!raceStart) raceStart = Date.now();
+  running = true;
+  save();
+}
+
+function pauseRace() {
+  running = false;
+  save();
+}
+
+function stopRace() {
+  running = false;
+  raceStart = null;
+  save();
+}
+
+// RENDER
 function render() {
   let t = document.getElementById("table");
   t.innerHTML = "";
 
-  for (let i = 1; i <= 150; i++) {
-    let r = data[i];
+  for (let i=1;i<=150;i++) {
+    let r = state[i];
+
+    let last = r.times.length ? r.times[r.times.length-1] : "";
 
     t.innerHTML += `
     <tr id="row-${i}">
       <td>${i}</td>
-      <td><input value="${r.name}" onchange="data[${i}].name=this.value"></td>
-      <td><input value="${r.surname}" onchange="data[${i}].surname=this.value"></td>
-      <td><input value="${r.year}" onchange="data[${i}].year=this.value"></td>
-      <td id="laps-${i}">0</td>
+      <td><input value="${r.name}" onchange="state[${i}].name=this.value;save()"></td>
+      <td><input value="${r.surname}" onchange="state[${i}].surname=this.value;save()"></td>
+      <td><input value="${r.cat}" onchange="state[${i}].cat=this.value;save()"></td>
+      <td id="laps-${i}">${r.laps}</td>
+      <td>${last}</td>
     </tr>`;
   }
 }
 
-// 🔊 BEEP
-function beep() {
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  const osc = ctx.createOscillator();
-  osc.connect(ctx.destination);
-  osc.start();
-  osc.stop(ctx.currentTime + 0.05);
-}
-
-// ➕ PIEVIENO APLI (ātri)
+// ADD LAP
 function addLap(num) {
-  if (!num) return;
+  if (!running) return;
 
-  num = num.toString().replace(/\D/g,"");
+  num = num.replace(/\D/g,"");
 
-  if (!data[num]) {
-    document.getElementById("status").innerText = "❌ Nav: " + num;
-    return;
-  }
+  if (!state[num]) return;
 
-  data[num].laps++;
+  let now = Date.now();
+  let lapTime = raceStart ? ((now - raceStart)/1000).toFixed(1) : 0;
 
-  // update tikai vienu šūnu (SUPER ātri)
-  document.getElementById("laps-" + num).innerText = data[num].laps;
+  state[num].laps++;
+  state[num].times.push(lapTime);
 
-  // highlight
-  if (lastRow) lastRow.classList.remove("highlight");
-  let row = document.getElementById("row-" + num);
-  row.classList.add("highlight");
-  lastRow = row;
+  document.getElementById("laps-"+num).innerText = state[num].laps;
 
-  document.getElementById("status").innerText = "✔ " + num;
-
-  beep();
+  save();
 }
 
-// ⌨️ MANUĀLA SUPER ĀTRA
+// FAST INPUT
 function manualAdd() {
-  let input = document.getElementById("manual");
+  let input = document.getElementById("num");
   addLap(input.value);
-
-  input.value = ""; // 🔥 iztīra uzreiz
-  input.focus();    // 🔥 fokus paliek
+  input.value="";
+  input.focus();
 }
 
-// ENTER = +1 aplis
-document.getElementById("manual").addEventListener("keydown", function(e){
-  if (e.key === "Enter") {
-    manualAdd();
-  }
+document.getElementById("num").addEventListener("keydown", e=>{
+  if (e.key==="Enter") manualAdd();
 });
 
-// 🎤 BALSS (loop)
-function startVoice() {
-  let rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+// EXPORT
+function exportCSV() {
+  let csv="Nr,Vards,Uzvards,Kategorija,Apli,Laiki\n";
 
-  rec.lang = "lv-LV";
-  rec.start();
-
-  document.getElementById("status").innerText = "🎤 Klausos...";
-
-  rec.onresult = function(e) {
-    let text = e.results[0][0].transcript.toLowerCase();
-    let num = text.replace(/\D/g,"");
-
-    addLap(num);
-
-    setTimeout(startVoice, 200);
-  };
-
-  rec.onerror = function() {
-    setTimeout(startVoice, 800);
-  };
-}
-
-// 📥 EXPORT
-function finishProject() {
-  let csv = "Nr,Vards,Uzvards,DzGads,Apli\n";
-
-  for (let i = 1; i <= 150; i++) {
-    let r = data[i];
-    csv += `${i},${r.name},${r.surname},${r.year},${r.laps}\n`;
+  for (let i=1;i<=150;i++) {
+    let r=state[i];
+    csv += `${i},${r.name},${r.surname},${r.cat},${r.laps},"${r.times.join('|')}"\n`;
   }
 
-  let blob = new Blob([csv], {type: "text/csv"});
-  let url = URL.createObjectURL(blob);
+  let blob=new Blob([csv],{type:"text/csv"});
+  let url=URL.createObjectURL(blob);
 
-  let a = document.createElement("a");
-  a.href = url;
-  a.download = "rezultati.csv";
+  let a=document.createElement("a");
+  a.href=url;
+  a.download="rezultati.csv";
   a.click();
 }
 
 render();
+updateTimer();
 
 </script>
 

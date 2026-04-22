@@ -1,5 +1,6 @@
 <script>
-
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
 // ===== CATEGORY FUNCTION =====
 function getCategory(year){
   year = parseInt(year);
@@ -112,4 +113,8 @@ function exportCSV(){
   a.click();
 }
 
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('service-worker.js');
+}
 </script>

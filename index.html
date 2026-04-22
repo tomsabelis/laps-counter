@@ -1,153 +1,110 @@
-<!DOCTYPE html>
-<html lang="lv">
-<head>
-<meta charset="UTF-8">
-<title>Race PRO Offline</title>
-
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#000000">
-
-<link rel="manifest" href="data:application/json,{
-  &quot;name&quot;:&quot;Race Timer PRO&quot;,
-  &quot;short_name&quot;:&quot;Race&quot;,
-  &quot;display&quot;:&quot;standalone&quot;,
-  &quot;start_url&quot;:&quot;.&quot;
-}">
-
-<style>
-body { font-family: Arial; padding: 10px; }
-button { padding: 8px; margin: 4px; }
-input { width: 90px; }
-table { border-collapse: collapse; width: 100%; }
-td, th { border: 1px solid #ccc; padding: 4px; text-align: center; }
-.highlight { background: #c8f7c5; }
-</style>
-</head>
-<body>
-
-<h2>🏃 Race PRO</h2>
-<h3 id="timer">00:00</h3>
-
-<button onclick="startRace()">▶️ Start</button>
-<button onclick="pauseRace()">⏸</button>
-<button onclick="stopRace()">🛑</button>
-<button onclick="exportCSV()">📥 Eksports</button>
-
-<br><br>
-
-<input id="num" placeholder="Nr" autofocus>
-<button onclick="manualAdd()">➕</button>
-
-<p id="status">Gatavs</p>
-
-<table>
-<thead>
-<tr>
-<th>Nr</th><th>Vārds</th><th>Uzvārds</th><th>Kat</th><th>Dz.g.</th><th>Apļi</th><th>Laiks</th>
-</tr>
-</thead>
-<tbody id="table"></tbody>
-</table>
-
 <script>
 
-// ===== STATE =====
+// ===== CATEGORY FUNCTION =====
+function getCategory(year){
+  year = parseInt(year);
+
+  if (!year) return "";
+
+  if (year >= 2015) return "U10";
+  if (year >= 2009) return "U16";
+  if (year >= 1983) return "Adults";
+  if (year <= 1980) return "Seniors";
+
+  return "";
+}
+
+// ===== INIT =====
 let state = JSON.parse(localStorage.getItem("race")) || {};
-let raceStart = localStorage.getItem("start") || null;
-let running = localStorage.getItem("run") === "true";
 
 if (Object.keys(state).length === 0) {
   for (let i=1;i<=150;i++) {
-    state[i]={name:"",surname:"",cat:"",year:"",laps:0,times:[]};
+    state[i]={
+      name:"",
+      surname:"",
+      gender:"",
+      year:"",
+      cat:"",
+      laps:0,
+      times:[]
+    };
   }
 }
 
+// ===== SAVE =====
 function save(){
   localStorage.setItem("race",JSON.stringify(state));
-  localStorage.setItem("start",raceStart);
-  localStorage.setItem("run",running);
 }
-
-// ===== TIMER =====
-function updateTimer(){
-  if(!raceStart) return;
-  let d=Math.floor((Date.now()-raceStart)/1000);
-  let m=String(Math.floor(d/60)).padStart(2,'0');
-  let s=String(d%60).padStart(2,'0');
-  document.getElementById("timer").innerText=m+":"+s;
-}
-setInterval(updateTimer,1000);
-
-function startRace(){
-  if(!raceStart) raceStart=Date.now();
-  running=true; save();
-}
-function pauseRace(){ running=false; save(); }
-function stopRace(){ running=false; raceStart=null; save(); }
 
 // ===== RENDER =====
 function render(){
   let t=document.getElementById("table");
   t.innerHTML="";
+
   for(let i=1;i<=150;i++){
     let r=state[i];
+
+    // auto category
+    r.cat = getCategory(r.year);
+
     let last=r.times.length?r.times[r.times.length-1]:"";
+
     t.innerHTML+=`
-    <tr id="row-${i}">
-    <td>${i}</td>
-    <td><input value="${r.name}" onchange="state[${i}].name=this.value;save()"></td>
-    <td><input value="${r.surname}" onchange="state[${i}].surname=this.value;save()"></td>
-    <td><input value="${r.cat}" onchange="state[${i}].cat=this.value;save()"></td>
-    <td><input value="${r.year}" onchange="state[${i}].year=this.value;save()"></td>
-    <td id="laps-${i}">${r.laps}</td>
-    <td>${last}</td>
+    <tr>
+      <td>${i}</td>
+      <td><input value="${r.name}" onchange="state[${i}].name=this.value;save()"></td>
+      <td><input value="${r.surname}" onchange="state[${i}].surname=this.value;save()"></td>
+      
+      <td>
+        <select onchange="state[${i}].gender=this.value;save()">
+          <option value="">-</option>
+          <option value="V" ${r.gender=="V"?"selected":""}>V</option>
+          <option value="S" ${r.gender=="S"?"selected":""}>S</option>
+        </select>
+      </td>
+
+      <td><input value="${r.year}" onchange="state[${i}].year=this.value;save();render()"></td>
+
+      <td>${r.cat}</td>
+
+      <td id="laps-${i}">${r.laps}</td>
+      <td>${last}</td>
     </tr>`;
   }
 }
 
-// ===== ADD LAP =====
-let lastRow=null;
-
-function addLap(num){
-  if(!running) return;
-
-  num=num.replace(/\D/g,"");
-  if(!state[num]) return;
-
-  let t=((Date.now()-raceStart)/1000).toFixed(1);
-
-  state[num].laps++;
-  state[num].times.push(t);
-
-  document.getElementById("laps-"+num).innerText=state[num].laps;
-
-  if(lastRow) lastRow.classList.remove("highlight");
-  let row=document.getElementById("row-"+num);
-  row.classList.add("highlight");
-  lastRow=row;
-
-  save();
-}
-
-// ===== FAST INPUT =====
-function manualAdd(){
-  let i=document.getElementById("num");
-  addLap(i.value);
-  i.value="";
-  i.focus();
-}
-
-document.getElementById("num").addEventListener("keydown",e=>{
-  if(e.key==="Enter") manualAdd();
-});
-
 // ===== EXPORT =====
 function exportCSV(){
-  let csv="Nr,Vards,Uzvards,Kategorija,DzGads,Apli,Laiki\n";
+
+  let rows = [];
+
   for(let i=1;i<=150;i++){
     let r=state[i];
-    csv+=`${i},${r.name},${r.surname},${r.cat},${r.year},${r.laps},"${r.times.join('|')}"\n`;
+
+    rows.push({
+      num:i,
+      name:r.name,
+      surname:r.surname,
+      gender:r.gender,
+      year:r.year,
+      cat:r.cat,
+      laps:r.laps,
+      times:r.times.join("|")
+    });
   }
+
+  // SORT by category + laps DESC
+  rows.sort((a,b)=>{
+    if(a.cat===b.cat) return b.laps - a.laps;
+    return a.cat.localeCompare(b.cat);
+  });
+
+  let csv="Nr,Vards,Uzvards,Dzimums,DzGads,Kategorija,Apli,Laiki\n";
+
+  rows.forEach(r=>{
+    csv+=`${r.num},${r.name},${r.surname},${r.gender},${r.year},${r.cat},${r.laps},"${r.times}"\n`;
+  });
+
   let blob=new Blob([csv],{type:"text/csv"});
   let a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
@@ -155,21 +112,4 @@ function exportCSV(){
   a.click();
 }
 
-// ===== SERVICE WORKER INLINE =====
-if ('serviceWorker' in navigator) {
-  const blob = new Blob([`
-    self.addEventListener('fetch', e => {
-      e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));
-    });
-  `], {type: 'text/javascript'});
-  const url = URL.createObjectURL(blob);
-  navigator.serviceWorker.register(url);
-}
-
-render();
-updateTimer();
-
 </script>
-
-</body>
-</html>

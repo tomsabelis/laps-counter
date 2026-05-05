@@ -8,9 +8,6 @@
 
 <title>Veselības Apļi</title>
 
-<!-- PWA -->
-<link rel="manifest" href="manifest.json">
-
 <style>
 body{font-family:Arial;padding:10px}
 button{margin:4px;padding:8px}
@@ -29,6 +26,7 @@ td,th{border:1px solid #ccc;padding:4px;text-align:center}
 
 <button onclick="startRace()">▶️ Start</button>
 <button onclick="stopRace()">🛑 Stop</button>
+<button onclick="resetLaps()">🧹 Notīrīt apļus</button>
 <button onclick="exportCSV()">📥 Eksports</button>
 
 <br><br>
@@ -36,7 +34,7 @@ td,th{border:1px solid #ccc;padding:4px;text-align:center}
 <input id="num" placeholder="Nr" autofocus>
 <button onclick="addLap()">➕ Aplis</button>
 
-<p id="status">Gatavs</p>
+<p>Gatavs</p>
 
 <table>
 <thead>
@@ -62,7 +60,6 @@ let running=false;
 
 function updateTimer(){
   if(!startTime) return;
-
   let d=Math.floor((Date.now()-startTime)/1000);
   document.getElementById("timer").innerText=
     String(Math.floor(d/60)).padStart(2,'0')+":"+String(d%60).padStart(2,'0');
@@ -119,23 +116,55 @@ function render(){
 
       <td>${getCat(r.y)}</td>
 
-      <td id="l-${i}">${r.l}</td>
+      <td id="laps-${i}">${r.l}</td>
       <td>${r.t.length?r.t[r.t.length-1]:""}</td>
     </tr>`;
   }
 }
 
-// ================= START / STOP =================
+// ================= START =================
 function startRace(){
+
+  if(!confirm("Sākt jaunu skrējienu? Vecie apļi tiks dzēsti")) return;
+
+  for(let i=1;i<=150;i++){
+    state[i].l = 0;
+    state[i].t = [];
+  }
+
   startTime=Date.now();
   running=true;
+
+  document.getElementById("timer").innerText="00:00";
+
   save();
+  render();
 }
 
+// ================= STOP =================
 function stopRace(){
   running=false;
   startTime=null;
   save();
+}
+
+// ================= RESET =================
+function resetLaps(){
+
+  if(!confirm("Tiešām notīrīt visus apļus?")) return;
+
+  for(let i=1;i<=150;i++){
+    state[i].l = 0;
+    state[i].t = [];
+  }
+
+  startTime=null;
+  running=false;
+
+  document.getElementById("timer").innerText="00:00";
+
+  save();
+  render();
 }
 
 // ================= LAP =================
@@ -150,7 +179,7 @@ function addLap(){
   state[n].l++;
   state[n].t.push(t);
 
-  document.getElementById("l-"+n).innerText=state[n].l;
+  document.getElementById("laps-"+n).innerText=state[n].l;
 
   document.getElementById("num").value="";
   document.getElementById("num").focus();

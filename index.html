@@ -43,7 +43,7 @@ td,th{border:1px solid #ccc;padding:4px;text-align:center}
 <th>Dz.gads</th>
 <th>Kategorija</th>
 <th>Apļi</th>
-<th>Pēdējais laiks</th>
+<th>Pēdējais aplis</th>
 </tr>
 </thead>
 <tbody id="table"></tbody>
@@ -78,7 +78,7 @@ let state=JSON.parse(localStorage.getItem("va"))||{};
 
 if(Object.keys(state).length===0){
   for(let i=1;i<=150;i++){
-    state[i]={n:"",s:"",g:"",y:"",l:0,t:[]};
+    state[i]={n:"",s:"",g:"",y:"",l:0,t:[],lastClick:null};
   }
 }
 
@@ -93,6 +93,8 @@ function render(){
 
   for(let i=1;i<=150;i++){
     let r=state[i];
+
+    let lastLap = r.t.length ? r.t[r.t.length-1] : "";
 
     t.innerHTML+=`
     <tr>
@@ -114,7 +116,7 @@ function render(){
       <td>${getCat(r.y)}</td>
 
       <td id="laps-${i}">${r.l}</td>
-      <td>${r.t.length?r.t[r.t.length-1]:""}</td>
+      <td>${lastLap}</td>
     </tr>`;
   }
 }
@@ -127,6 +129,7 @@ function startRace(){
   for(let i=1;i<=150;i++){
     state[i].l=0;
     state[i].t=[];
+    state[i].lastClick=null;
   }
 
   startTime=Date.now();
@@ -153,6 +156,7 @@ function resetLaps(){
   for(let i=1;i<=150;i++){
     state[i].l=0;
     state[i].t=[];
+    state[i].lastClick=null;
   }
 
   startTime=null;
@@ -164,17 +168,28 @@ function resetLaps(){
   render();
 }
 
-// LAP
+// LAP (SPLIT TIME)
 function addLap(){
   if(!running) return;
 
   let n=document.getElementById("num").value.replace(/\D/g,"");
   if(!state[n]) return;
 
-  let t=((Date.now()-startTime)/1000).toFixed(1);
+  let now = Date.now();
+
+  let lapTime;
+
+  if(state[n].lastClick===null){
+    lapTime = (now - startTime)/1000;
+  }else{
+    lapTime = (now - state[n].lastClick)/1000;
+  }
+
+  lapTime = lapTime.toFixed(1);
 
   state[n].l++;
-  state[n].t.push(t);
+  state[n].t.push(lapTime);
+  state[n].lastClick = now;
 
   document.getElementById("laps-"+n).innerText=state[n].l;
 
@@ -218,7 +233,7 @@ function exportCSV(){
     return a.last-b.last;
   });
 
-  let csv="Nr,Vards,Uzvards,Dzimums,DzGads,Kategorija,Apli,Laiki\n";
+  let csv="Nr,Vards,Uzvards,Dzimums,DzGads,Kategorija,Apli,Apļu laiki\n";
 
   let lastGroup="";
 
